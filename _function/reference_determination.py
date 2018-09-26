@@ -54,20 +54,25 @@ def reference_regression(cl,v,x,y,num):
 # In[1]
 if __name__=='__main__':
     #基准值回归    
-    reference = pd.read_csv('F:/system_program/monitoring_condition/data/reference_samples.csv').drop(columns=['clusters'])
+    reference = pd.read_csv('F:/system_program/monitoring_condition/data/reference_samples_z.csv').drop(columns=['clusters'])
     # 测试样本    
     X_test = {'P':[],'T':[]}    # x表示功率，y表示温度
-    Z = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-    cof = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-    interpret = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-    mse = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-    r2 = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
+    Z = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+         'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+    cof = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+           'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+    interpret = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+                 'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+    mse = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+           'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+    r2 = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+          'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
     for i in np.linspace(150,300,50):
         for j in np.linspace(0,30,50):
             X_test['P'].append(i)
             X_test['T'].append(j)
     X = pd.DataFrame(X_test)
-    for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas']:
+    for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas','c_pai','c_efficiency','t_efficiency','h_efficiency','h_consumption']:
         model,cof[v],interpret[v],mse[v],r2[v] = reference_regression('ref',v,reference[['power','T']],reference[v],2)
         Z[v] = model.predict(X)
 # In[]    
@@ -76,7 +81,7 @@ if __name__=='__main__':
     from mpl_toolkits import mplot3d
     plt.style.use('seaborn')  #设置绘图样式
     # matlab风格画图
-    for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas']:
+    for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas','c_pai','c_efficiency','t_efficiency','h_efficiency','h_consumption']:
         fig = plt.figure()   # 创建图形
         ax = plt.axes(projection='3d')
         ax.scatter3D(reference['power'],reference['T'],reference[v])
@@ -87,20 +92,25 @@ if __name__=='__main__':
     
 # In[2]
     # 标准差回归 
-    reference_sd = pd.read_csv('F:/system_program/monitoring_condition/data/reference_std_samples.csv').drop(columns=['clusters'])    
+    reference_sd = pd.read_csv('F:/system_program/monitoring_condition/data/reference_std_samples_z.csv').drop(columns=['clusters'])  
     # 测试样本    
     X_test_std = {'P':[],'T':[]}    # x表示功率，y表示温度
-    Z_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-    cof_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-    interpret_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-    mse_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-    r2_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
+    Z_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+             'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+    cof_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+                'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+    interpret_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+                      'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+    mse_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+                'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+    r2_std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+               'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
     for i in np.linspace(150,300,50):
         for j in np.linspace(0,30,50):
             X_test_std['P'].append(i)
             X_test_std['T'].append(j)
     X_std = pd.DataFrame(X_test_std)
-    for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas']:
+    for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas','c_pai','c_efficiency','t_efficiency','h_efficiency','h_consumption']:
         model_std,cof_std[v],interpret_std[v],mse_std[v],r2_std[v] = reference_regression('std',v,reference[['power','T']],reference_sd[v],1)
         Z_std[v] = model_std.predict(X_std)
 # In[]    
@@ -109,7 +119,7 @@ if __name__=='__main__':
     from mpl_toolkits import mplot3d
     plt.style.use('seaborn')  #设置绘图样式
     # matlab风格画图
-    for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas']:
+    for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas','c_pai','c_efficiency','t_efficiency','h_efficiency','h_consumption']:
         fig = plt.figure()   # 创建图形
         ax = plt.axes(projection='3d')
         ax.scatter3D(reference['power'],reference_sd['T'],reference_sd[v])

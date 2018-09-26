@@ -13,7 +13,6 @@ Available functions:
 """
 
 import numpy as np
-import pandas as pd
 from sklearn.externals import joblib
 
 from _function.steady_state_detection import steady_detection

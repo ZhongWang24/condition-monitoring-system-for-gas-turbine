@@ -17,11 +17,12 @@ from sklearn.externals import joblib
 from _function.database_operation import query_data,write_data,timecircle
 import _function.parameter_calculation as pc
 from _function.anormal_detection import anomaly_detection
+from _function.fault_detection import feature_extraction
 
 # In[0]
 # 数据写入
 #os.environ['NLS_LANG'] = 'SIMPLIFIED CHINESE_CHINA.UTF8'   #设置环境变量，防乱码          
-start_time = '2016-06-01 00:01:00'                          #时间，会从主函数读入 #sys.argv[1] 
+start_time = '2016-06-01 00:15:00'                          #时间，会从主函数读入 #sys.argv[1] 
 end_time = timecircle(start_time,1)
 # 一次传入两个参数         
 data = query_data("select * from TB_RJ_REAL_RUN where TURID = 11 and CYTIME between '%s' and '%s'"%(end_time,start_time))                                          
@@ -75,48 +76,55 @@ gc_efficiency = gasturbine.compressor.c_efficiency(c_pai)
 t_pai = gasturbine.turbine.expansion_ratio()
 gt_efficiency = gasturbine.turbine.t_efficiency(t_pai)
 g_efficiency = gasturbine.g_efficiency()  
-g_heat_rate = gasturbine.heat_rate()        
+g_heat_rate = gasturbine.heat_rate() 
+
+gt_real_value= pd.DataFrame({'t1':data['V7'],'p1':data['V8'],'t2':data['V9'],'p2':data['V10'],
+                  't4':data['V63'],'p4':data['V64'],'m4':data['V67'],'m_gas':data['V59'],
+                  'c_pai':c_pai,'c_efficiency':gc_efficiency,'t_efficiency':gt_efficiency,
+                  'h_efficiency':g_efficiency,'h_consumption':g_heat_rate})       
 # In[3]
 # 基准值模型导入
 # 燃气轮机
 #压气机进口温度;压气机进口压力;压气机出口温度;压气机出口压力;透平出口温度;透平出口压力;
 #排气流量;天然气流量;
-reference_model = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-std_model = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[]}
-for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas']:
+reference_model = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+                   'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+std_model = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
+              'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas','c_pai','c_efficiency','t_efficiency','h_efficiency','h_consumption']:
     reference_model[v] = joblib.load('F:/system_program/monitoring_condition/model/GLM_ref_{0}.pkl'.format(v))
     std_model[v] = joblib.load('F:/system_program/monitoring_condition/model/GLM_std_{0}.pkl'.format(v))
 
 # 基准值计算
 reference = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
-                   'cpai':[],'ce':[],'te':[],'ge':[],'grc':[]}  #指标的基准值通过参数基准值计算得到
+                   'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}  #指标的基准值通过参数基准值计算得到
 std = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
-                   'cpai':[],'ce':[],'te':[],'ge':[],'grc':[]}
-for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas']:
+                   'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
+for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas','c_pai','c_efficiency','t_efficiency','h_efficiency','h_consumption']:
     reference[v] = reference_model[v].predict(np.array(boundary[['Power','T']].iloc[-1]).reshape(1,-1))
-    std[v] = std_model[v].predict(np.arrary(boundary[['Power','T']].iloc[-1]).reshape(1,-1))
+    std[v] = std_model[v].predict(np.array(boundary[['Power','T']].iloc[-1]).reshape(1,-1))
 #指标基准值计算,#压比；压气机效率；透平效率；燃气轮机效率；燃气轮机热耗率
 # In[3]
 # 异常检测(基于基准值区间)
 lower_limit = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
-                   'cpai':[],'ce':[],'te':[],'ge':[],'grc':[]}
+                   'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
 upper_limit = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
-                   'cpai':[],'ce':[],'te':[],'ge':[],'grc':[]}
+                   'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
 indicator = {'t1':[], 'p1':[], 't2':[], 'p2':[], 't4':[], 'p4':[], 'm4':[],'m_gas':[],
-                   'cpai':[],'ce':[],'te':[],'ge':[],'grc':[]}
+                   'c_pai':[],'c_efficiency':[],'t_efficiency':[],'h_efficiency':[],'h_consumption':[]}
 
 # 涉及稳态检测
-for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas']:
+for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas','c_pai','c_efficiency','t_efficiency','h_efficiency','h_consumption']:
     lower_limit[v] = reference[v]-3*std[v]
     upper_limit[v] = reference[v]+3*std[v]
-    indicator[v] = anomaly_detection(gt[v],gt_power,lower_limit[v],upper_limit[v])
-# In[]
+    indicator[v] = anomaly_detection(gt_real_value[v],gt_power,lower_limit[v],upper_limit[v])
+# In[4]
 # 特征提取
-
-
-
+feature = feature_extraction(indicator)
 # In[4]
 # 故障诊断
+fault_model = joblib.load('F:/system_program/monitoring_condition/model/fault_model.pkl')
+fault = fault_model.predict(feature)
 
 # In[5]
 ##写入oracle数据库
@@ -134,25 +142,44 @@ write_data(sql_gt_1)   #第？台机组
 #压气机进口温度：V7;压气机进口压力：V8;压气机出口温度：V9;压气机出口压力：V10;透平出口温度：V63;透平出口压力：V64;
 #天然气流量：V59;排气流量：V67;
 #压气机压比：V174;压气机效率：,V175,透平绝热效率：V179;燃机效率：V180;燃机气耗率：V181;
-sql_gt_2_realtime="INSERT INTO TB_RJ_REAL_REFERENCE(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67)\
-VALUES (seq_rj_common.nextval,16,'%s','%f','%f','%f','%f','%f','%f','%f','%f')"\
-%(start_time,reference['t1'],reference['p1'],reference['t2'],reference['p2'],reference['t4'],reference['p4'],reference['m4'],reference['m_gas'])
+sql_gt_2_realtime="INSERT INTO TB_RJ_REAL_REFERENCE(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67,V174,V175,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,reference['t1'],reference['p1'],reference['t2'],reference['p2'],reference['t4'],reference['p4'],reference['m4'],reference['m_gas'],
+  reference['c_pai'],reference['c_efficiency'],reference['t_efficiency'],reference['h_efficiency'],reference['h_consumption'])
 write_data(sql_gt_2_realtime)
 #下限
-sql_gt_3_realtime="INSERT INTO TB_RJ_REAL_REFERENCE_LOWER(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67)\
-VALUES (seq_rj_common.nextval,16,'%s','%f','%f','%f','%f','%f','%f','%f','%f')"\
-%(start_time,lower_limit['t1'],lower_limit['p1'],lower_limit['t2'],lower_limit['p2'],lower_limit['t4'],lower_limit['p4'],lower_limit['m4'],lower_limit['m_gas'])
+sql_gt_3_realtime="INSERT INTO TB_RJ_REAL_REFERENCE_LOWER(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67,V174,V175,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,lower_limit['t1'],lower_limit['p1'],lower_limit['t2'],lower_limit['p2'],lower_limit['t4'],lower_limit['p4'],lower_limit['m4'],lower_limit['m_gas'],
+  lower_limit['c_pai'],lower_limit['c_efficiency'],lower_limit['t_efficiency'],lower_limit['h_efficiency'],lower_limit['h_consumption'])
 write_data(sql_gt_3_realtime)
 #上限
-sql_gt_4_realtime="INSERT INTO TB_RJ_REAL_REFERENCE_UPPER(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67)\
-VALUES (seq_rj_common.nextval,16,'%s','%f','%f','%f','%f','%f','%f','%f','%f')"\
-%(start_time,upper_limit['t1'],upper_limit['p1'],upper_limit['t2'],upper_limit['p2'],upper_limit['t4'],upper_limit['p4'],upper_limit['m4'],upper_limit['m_gas'])
+sql_gt_4_realtime="INSERT INTO TB_RJ_REAL_REFERENCE_UPPER(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67,V174,V175,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,upper_limit['t1'],upper_limit['p1'],upper_limit['t2'],upper_limit['p2'],upper_limit['t4'],upper_limit['p4'],upper_limit['m4'],upper_limit['m_gas'],
+  upper_limit['c_pai'],upper_limit['c_efficiency'],upper_limit['t_efficiency'],upper_limit['h_efficiency'],upper_limit['h_consumption'])
 write_data(sql_gt_4_realtime)
 #异常检测
-sql_gt_5_realtime="INSERT INTO TB_RJ_REAL_ANORMALY(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67)\
-VALUES (seq_rj_common.nextval,16,'%s','%f','%f','%f','%f','%f','%f','%f','%f')"\
-%(start_time,indicator['t1'],indicator['p1'],indicator['t2'],indicator['p2'],indicator['t4'],indicator['p4'],indicator['m4'],indicator['m_gas'])
+sql_gt_5_realtime="INSERT INTO TB_RJ_REAL_ANORMALY(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67,V174,V175,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,indicator['t1'],indicator['p1'],indicator['t2'],indicator['p2'],indicator['t4'],indicator['p4'],indicator['m4'],indicator['m_gas'],
+  indicator['c_pai'],indicator['c_efficiency'],indicator['t_efficiency'],indicator['h_efficiency'],indicator['h_consumption'])
 write_data(sql_gt_5_realtime)
+
+# 特征
+sql_gt_6_realtime="INSERT INTO TB_RJ_REAL_AUTOFEATURE(ID,TURID,CYTIME,V10,V9,V19,V17,V2,V3,V16)\
+VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,feature['p2'],feature['t2'],feature['t4'],feature['m2'],feature['r'],feature['ce'],feature['te'])
+write_data(sql_gt_6_realtime)
+#故障模式
+sql_gt_7_realtime="INSERT INTO TB_RJ_REAL_AUTOFAULT(ID,TURID,CYTIME,V1,V2,V3,V4,V5,V6,V8,V9,V10,V11,V13)\
+VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,fault['CF'],fault['CC'],fault['CS'],fault['CI'],fault['BF'],fault['BP'],fault['TF'],fault['TC'],fault['TD'],fault['HW'],fault['HB'])
+write_data(sql_gt_7_realtime)
+
+
+
+
 
 
 

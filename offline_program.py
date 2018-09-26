@@ -15,21 +15,19 @@ Express it in detail:
 @author: 仲
 """
 
+import sys
+sys.path.append('F:\\system_program\\monitoring_condition') 
 import numpy as np
 import pandas as pd
-import scipy.stats as stats
-from sklearn.externals import joblib
-from matplotlib import pyplot as plt
-
-
 from _function.steady_state_detection import steady_division,steady_training 
 from _function.working_condition_classification import condition_clustering_MultistepK
 from _function.reference_determination import reference_regression
+from _function.fault_detection import network_construction
 # In[1] 数据读取
-data1 = pd.read_csv('F:/system_program/monitoring_condition/data/3yue.csv')
-data2 = pd.read_csv('F:/system_program/monitoring_condition/data/6yue.csv')
-data3 = pd.read_csv('F:/system_program/monitoring_condition/data/9yue.csv')
-data4 = pd.read_csv('F:/system_program/monitoring_condition/data/12yue.csv')
+data1 = pd.read_csv('F:/system_program/monitoring_condition/data/3yue_z.csv')
+data2 = pd.read_csv('F:/system_program/monitoring_condition/data/6yue_z.csv')
+data3 = pd.read_csv('F:/system_program/monitoring_condition/data/9yue_z.csv')
+data4 = pd.read_csv('F:/system_program/monitoring_condition/data/12yue_z.csv')
 d1 = data1.iloc[7199:14399]
 d2 = data2.iloc[0:7200]
 d3 = data3.iloc[7199:14399]
@@ -58,14 +56,16 @@ number_M,clusters_M = condition_clustering_MultistepK(boundary_steady,number_up 
 length = len(clusters_M)
 ref = {'power':np.zeros(length),'H':np.zeros(length),'T':np.zeros(length),'P':np.zeros(length),
      't1':np.zeros(length),'p1':np.zeros(length),'t2':np.zeros(length),'p2':np.zeros(length),
-     't4':np.zeros(length),'p4':np.zeros(length),'m4':np.zeros(length),'m_gas':np.zeros(length)}
+     't4':np.zeros(length),'p4':np.zeros(length),'m4':np.zeros(length),'m_gas':np.zeros(length),
+     'c_pai':np.zeros(length),'c_efficiency':np.zeros(length),'t_efficiency':np.zeros(length),'h_efficiency':np.zeros(length),'h_consumption':np.zeros(length)}
 std = {'power':np.zeros(length),'H':np.zeros(length),'T':np.zeros(length),'P':np.zeros(length),
      't1':np.zeros(length),'p1':np.zeros(length),'t2':np.zeros(length),'p2':np.zeros(length),
-     't4':np.zeros(length),'p4':np.zeros(length),'m4':np.zeros(length),'m_gas':np.zeros(length)}
+     't4':np.zeros(length),'p4':np.zeros(length),'m4':np.zeros(length),'m_gas':np.zeros(length),
+     'c_pai':np.zeros(length),'c_efficiency':np.zeros(length),'t_efficiency':np.zeros(length),'h_efficiency':np.zeros(length),'h_consumption':np.zeros(length)}
 for i in range(length):
      clusters= data_steady.loc[clusters_M[str(i)][0].index]
-     Mean = clusters.mean() 
-     Standard = clusters.std()
+     Mean = clusters.astype(float).mean() 
+     Standard = clusters.astype(float).std()
      # 数据期望
      ref['power'][i] = Mean['Power']
      ref['H'][i] = Mean['H']
@@ -78,7 +78,12 @@ for i in range(length):
      ref['t4'][i] = Mean['t4']
      ref['p4'][i] = Mean['p4']
      ref['m4'][i] = Mean['m4']
-     ref['m_gas'][i] = Mean['m_gas']
+     ref['m_gas'][i] = Mean['m_gas'] 
+     ref['c_pai'][i] = Mean['pai'] 
+     ref['c_efficiency'][i] = Mean['c_efficiency']
+     ref['t_efficiency'][i] = Mean['t_efficiency']
+     ref['h_efficiency'][i] = Mean['h_efficiency']
+     ref['h_consumption'][i] = Mean['h_consumption']    
      # 数据标准差
      std['power'][i] = Standard['Power']
      std['H'][i] = Standard['H']
@@ -92,20 +97,22 @@ for i in range(length):
      std['p4'][i] = Standard['p4']
      std['m4'][i] = Standard['m4']
      std['m_gas'][i] = Standard['m_gas']
+     std['c_pai'][i] = Standard['pai'] 
+     std['c_efficiency'][i] = Standard['c_efficiency']
+     std['t_efficiency'][i] = Standard['t_efficiency']
+     std['h_efficiency'][i] = Standard['h_efficiency']
+     std['h_consumption'][i] = Standard['h_consumption']   
+     
 # In[5]基准值回归模型
 reference_value = pd.DataFrame(ref)
 reference_std = pd.DataFrame(std)
 reference_value.to_csv('F:/system_program/monitoring_condition/data/reference_samples.csv')
-reference_std.to_csv('F:/system_program/monitoring_condition/data/reference_std_samples.csv')
-for v in reference_value.drop(columns=['clusters']).columns:
+reference_std.to_csv('F:/system_program/monitoring_condition/data/reference_std_samples.csv') 
+for v in ['t1', 'p1', 't2', 'p2', 't4', 'p4', 'm4','m_gas','c_pai','c_efficiency','t_efficiency','h_efficiency','h_consumption']:
      model_ref,coef_ref,intercept_ref,mse_ref,r2_ref = reference_regression('ref',v,reference_value[['power','T']],reference_value[v],2)
-     model_std,coef_std,intercept_std,mse_std,r2_std = reference_regression('std',v,reference_std[['power','T']],reference_std[v],1)
-# In[6]异常检测回归模型
+     model_std,coef_std,intercept_std,mse_std,r2_std = reference_regression('std',v,reference_value[['power','T']],reference_std[v],1)  # 注意：功率基准值和参数方差回归
+# In[6]贝叶斯网络模型训练
+fault_model = network_construction()
 
-## 特征变量异常检测模型训练
-#for v in variables_steady.columns:  
-#    # 基准值回归模型的训练，以及阈值的确定
-#    reference= reference_regression(v,variables_steady[v],numbers,labels,centers)   
-#    # P_ratio统计量分布的训练，与阈值确定 
-#    p_limit,p_ratio = p_ratio_training(v,variables_steady[v],power_steady)
+
 
