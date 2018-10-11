@@ -22,10 +22,10 @@ from _function.fault_detection import feature_extraction
 # In[0]
 # 数据写入
 #os.environ['NLS_LANG'] = 'SIMPLIFIED CHINESE_CHINA.UTF8'   #设置环境变量，防乱码          
-start_time = '2016-06-01 00:15:00'                          #时间，会从主函数读入 #sys.argv[1] 
+start_time = '2018-09-01 00:01:00'                          #时间，会从主函数读入 #sys.argv[1] 
 end_time = timecircle(start_time,1)
 # 一次传入两个参数         
-data = query_data("select * from TB_RJ_REAL_RUN where TURID = 11 and CYTIME between '%s' and '%s'"%(end_time,start_time))                                          
+data = query_data("select * from TB_RJ_REAL_RUN where TURID = 16 and CYTIME between '%s' and '%s'"%(end_time,start_time))                                          
 # In[1]
 # 数据分类
 #大气相对湿度:V167、大气温度:V168、大气压力:V169、燃机功率:V1、
@@ -52,25 +52,25 @@ ST_variables=data[['V125','V126','V127','V128','V129','V130','V131','V132','V133
 # In[2]
 # 指标计算
 gt_power = boundary['Power'] 
-ambient_pressure = boundary['P']/10000 
+ambient_pressure = boundary['P'].iloc[1]/10000 
 # Gasturbine
-t1 = gt['t1']+273.15
-p1 = gt['p1']/1000+ambient_pressure    #P1单位是kpa
-t2 = gt['t2']+273.15
-p2 = gt['p2']+ambient_pressure
-t4 = gt['t4']+273.15
-p4 = gt['p4']/1000+ambient_pressure   #P4单位是kpa
+t1 = gt['t1']
+p1 = gt['p1']  #P1单位是kpa
+t2 = gt['t2']
+p2 = gt['p2']
+t4 = gt['t4']
+p4 = gt['p4']   #P4单位是kpa
 m4 = gt['m4']
 m_gas = gt['m_gas']
-t_gas = gt['t_gas']+273.15 # 无数据
+t_gas = gt['t_gas']# 无数据
 p_gas = gt['p_gas']+ambient_pressure # 无数据
 # 透平进口温度压力计算
-t3 = CLCSO/100*700+700+273
+t3 = CLCSO/100*700+700
 p3 = p2*0.99
 # 燃气轮机指标
-gasturbine = pc.Gasturbine(gt_power.iloc[-1],t1.iloc[-1],p1.iloc[-1],t2.iloc[-1],p2.iloc[-1],
-                           t3.iloc[-1],p3.iloc[-1],
-                           t4.iloc[-1],p4.iloc[-1],m4.iloc[-1],t_gas.iloc[-1],p_gas.iloc[-1],m_gas.iloc[-1])
+gasturbine = pc.Gasturbine(gt_power.iloc[1],t1.iloc[1]+273.15,p1.iloc[1]/1000+ambient_pressure,t2.iloc[1]+273.15,p2.iloc[1]+ambient_pressure,
+                           t3.iloc[1]+273.15,p3.iloc[1]+ambient_pressure,
+                           t4.iloc[1]+273.15,p4.iloc[1]/1000+ambient_pressure,m4.iloc[1],t_gas.iloc[1],p_gas.iloc[1],m_gas.iloc[1])
 c_pai = gasturbine.compressor.pressure_ratio()
 gc_efficiency = gasturbine.compressor.c_efficiency(c_pai)
 t_pai = gasturbine.turbine.expansion_ratio()
@@ -127,55 +127,92 @@ fault_model = joblib.load('F:/system_program/monitoring_condition/model/fault_mo
 fault = fault_model.predict(feature)
 
 # In[5]
+save_time = 20180901
 ##写入oracle数据库
 #指标
 #透平入口烟气温度:T3,V176;透平入口烟气压力:P3,V177;
 #压气机压比:c_pai,V174;压气机效率:gc_efficiency,V175;透平膨胀比:t_pai,V178;透平绝热效率:gt_efficiency,V179;
 #燃机效率:g_efficiency,V180;燃机热耗率:g_heat_rate,V181;
 
-sql_gt_1="INSERT INTO TB_RJ_REAL_RUN(ID,TURID,CYTIME,V176,V177,V174,V175,V178,V179,V180,V181)\
-VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f')"\
-%(start_time,t3.iloc[-1],p3.iloc[-1],c_pai,gc_efficiency,t_pai,gt_efficiency,g_efficiency,g_heat_rate)
-write_data(sql_gt_1)   #第？台机组
+sql_gt_1_real="INSERT INTO TB_RJ_REAL_RUN(ID,TURID,CYTIME,V1,V167,V168,V169,V7,V8,V9,V10,V63,V64,V67,V59,V186,V176,V177,V174,V175,V178,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,gt_power.iloc[1],boundary['H'].iloc[1],boundary['T'].iloc[1],boundary['P'].iloc[1],t1.iloc[1],p1.iloc[1],t2.iloc[1],p2.iloc[1],t4.iloc[1],p4.iloc[1],\
+  m4.iloc[1],m_gas.iloc[1],CLCSO.iloc[1],t3.iloc[1],p3.iloc[1],c_pai,gc_efficiency,t_pai,gt_efficiency,g_efficiency,g_heat_rate)
+write_data(sql_gt_1_real)   #第？台机组
+sql_gt_1_his="INSERT INTO TB_RJ_HIS_RUN(ID,TURID,CYTIME,SAVETIME,V1,V167,V168,V169,V7,V8,V9,V10,V63,V64,V67,V59,V186,V176,V177,V174,V175,V178,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,save_time,gt_power.iloc[1],boundary['H'].iloc[1],boundary['T'].iloc[1],boundary['P'].iloc[1],t1.iloc[1],p1.iloc[1],t2.iloc[1],p2.iloc[1],t4.iloc[1],p4.iloc[1],\
+  m4.iloc[1],m_gas.iloc[1],CLCSO.iloc[1],t3.iloc[1],p3.iloc[1],c_pai,gc_efficiency,t_pai,gt_efficiency,g_efficiency,g_heat_rate)
+write_data(sql_gt_1_his)   #第？台机组
 
 #基准值存入位置说明：
 #压气机进口温度：V7;压气机进口压力：V8;压气机出口温度：V9;压气机出口压力：V10;透平出口温度：V63;透平出口压力：V64;
 #天然气流量：V59;排气流量：V67;
 #压气机压比：V174;压气机效率：,V175,透平绝热效率：V179;燃机效率：V180;燃机气耗率：V181;
-sql_gt_2_realtime="INSERT INTO TB_RJ_REAL_REFERENCE(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67,V174,V175,V179,V180,V181)\
+sql_gt_2_realtime="INSERT INTO TB_RJ_REAL_REFERENCE(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V67,V59,V174,V175,V179,V180,V181)\
 VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
 %(start_time,reference['t1'],reference['p1'],reference['t2'],reference['p2'],reference['t4'],reference['p4'],reference['m4'],reference['m_gas'],
   reference['c_pai'],reference['c_efficiency'],reference['t_efficiency'],reference['h_efficiency'],reference['h_consumption'])
 write_data(sql_gt_2_realtime)
+sql_gt_2_his="INSERT INTO TB_RJ_HIS_REFERENCE(ID,TURID,CYTIME,SAVETIME,V7,V8,V9,V10,V63,V64,V67,V59,V174,V175,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,save_time,reference['t1'],reference['p1'],reference['t2'],reference['p2'],reference['t4'],reference['p4'],reference['m4'],reference['m_gas'],
+  reference['c_pai'],reference['c_efficiency'],reference['t_efficiency'],reference['h_efficiency'],reference['h_consumption'])
+write_data(sql_gt_2_his)
+
 #下限
-sql_gt_3_realtime="INSERT INTO TB_RJ_REAL_REFERENCE_LOWER(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67,V174,V175,V179,V180,V181)\
+sql_gt_3_realtime="INSERT INTO TB_RJ_REAL_REFERENCE_LOWER(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V67,V59,V174,V175,V179,V180,V181)\
 VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
 %(start_time,lower_limit['t1'],lower_limit['p1'],lower_limit['t2'],lower_limit['p2'],lower_limit['t4'],lower_limit['p4'],lower_limit['m4'],lower_limit['m_gas'],
   lower_limit['c_pai'],lower_limit['c_efficiency'],lower_limit['t_efficiency'],lower_limit['h_efficiency'],lower_limit['h_consumption'])
 write_data(sql_gt_3_realtime)
+sql_gt_3_his="INSERT INTO TB_RJ_HIS_REFERENCE_LOWER(ID,TURID,CYTIME,SAVETIME,V7,V8,V9,V10,V63,V64,V67,V59,V174,V175,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,save_time,lower_limit['t1'],lower_limit['p1'],lower_limit['t2'],lower_limit['p2'],lower_limit['t4'],lower_limit['p4'],lower_limit['m4'],lower_limit['m_gas'],
+  lower_limit['c_pai'],lower_limit['c_efficiency'],lower_limit['t_efficiency'],lower_limit['h_efficiency'],lower_limit['h_consumption'])
+write_data(sql_gt_3_his)
+
 #上限
-sql_gt_4_realtime="INSERT INTO TB_RJ_REAL_REFERENCE_UPPER(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67,V174,V175,V179,V180,V181)\
+sql_gt_4_realtime="INSERT INTO TB_RJ_REAL_REFERENCE_UPPER(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V67,V59,V174,V175,V179,V180,V181)\
 VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
 %(start_time,upper_limit['t1'],upper_limit['p1'],upper_limit['t2'],upper_limit['p2'],upper_limit['t4'],upper_limit['p4'],upper_limit['m4'],upper_limit['m_gas'],
   upper_limit['c_pai'],upper_limit['c_efficiency'],upper_limit['t_efficiency'],upper_limit['h_efficiency'],upper_limit['h_consumption'])
 write_data(sql_gt_4_realtime)
+sql_gt_4_his="INSERT INTO TB_RJ_HIS_REFERENCE_UPPER(ID,TURID,CYTIME,SAVETIME,V7,V8,V9,V10,V63,V64,V67,V59,V174,V175,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,save_time,upper_limit['t1'],upper_limit['p1'],upper_limit['t2'],upper_limit['p2'],upper_limit['t4'],upper_limit['p4'],upper_limit['m4'],upper_limit['m_gas'],
+  upper_limit['c_pai'],upper_limit['c_efficiency'],upper_limit['t_efficiency'],upper_limit['h_efficiency'],upper_limit['h_consumption'])
+write_data(sql_gt_4_his)
 #异常检测
-sql_gt_5_realtime="INSERT INTO TB_RJ_REAL_ANORMALY(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V59,V67,V174,V175,V179,V180,V181)\
+sql_gt_5_realtime="INSERT INTO TB_RJ_REAL_ANORMALY(ID,TURID,CYTIME,V7,V8,V9,V10,V63,V64,V67,V59,V174,V175,V179,V180,V181)\
 VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
 %(start_time,indicator['t1'],indicator['p1'],indicator['t2'],indicator['p2'],indicator['t4'],indicator['p4'],indicator['m4'],indicator['m_gas'],
   indicator['c_pai'],indicator['c_efficiency'],indicator['t_efficiency'],indicator['h_efficiency'],indicator['h_consumption'])
 write_data(sql_gt_5_realtime)
+sql_gt_5_his="INSERT INTO TB_RJ_HIS_ANORMALY(ID,TURID,CYTIME,SAVETIME,V7,V8,V9,V10,V63,V64,V67,V59,V174,V175,V179,V180,V181)\
+VALUES (seq_rj_common.nextval,11,'%s','%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+%(start_time,save_time,indicator['t1'],indicator['p1'],indicator['t2'],indicator['p2'],indicator['t4'],indicator['p4'],indicator['m4'],indicator['m_gas'],
+  indicator['c_pai'],indicator['c_efficiency'],indicator['t_efficiency'],indicator['h_efficiency'],indicator['h_consumption'])
+write_data(sql_gt_5_his)
 
 # 特征
 sql_gt_6_realtime="INSERT INTO TB_RJ_REAL_AUTOFEATURE(ID,TURID,CYTIME,V10,V9,V19,V17,V2,V3,V16)\
 VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f')"\
 %(start_time,feature['p2'],feature['t2'],feature['t4'],feature['m2'],feature['r'],feature['ce'],feature['te'])
 write_data(sql_gt_6_realtime)
+#sql_gt_6_his="INSERT INTO TB_RJ_HIS_AUTOFEATURE(ID,TURID,CYTIME,SAVETIME,V10,V9,V19,V17,V2,V3,V16)\
+#VALUES (seq_rj_common.nextval,16,'%s','%s','%f','%f','%f','%f','%f','%f','%f')"\
+#%(start_time,save_time,feature['p2'],feature['t2'],feature['t4'],feature['m2'],feature['r'],feature['ce'],feature['te'])
+#write_data(sql_gt_6_his)
 #故障模式
 sql_gt_7_realtime="INSERT INTO TB_RJ_REAL_AUTOFAULT(ID,TURID,CYTIME,V1,V2,V3,V4,V5,V6,V8,V9,V10,V11,V13)\
 VALUES (seq_rj_common.nextval,11,'%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
 %(start_time,fault['CF'],fault['CC'],fault['CS'],fault['CI'],fault['BF'],fault['BP'],fault['TF'],fault['TC'],fault['TD'],fault['HW'],fault['HB'])
 write_data(sql_gt_7_realtime)
+#sql_gt_7_his="INSERT INTO TB_RJ_HIS_AUTOFAULT(ID,TURID,CYTIME,SAVETIME,V1,V2,V3,V4,V5,V6,V8,V9,V10,V11,V13)\
+#VALUES (seq_rj_common.nextval,16,'%s','%s','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f','%f')"\
+#%(start_time,save_time,fault['CF'],fault['CC'],fault['CS'],fault['CI'],fault['BF'],fault['BP'],fault['TF'],fault['TC'],fault['TD'],fault['HW'],fault['HB'])
+#write_data(sql_gt_7_his)
 
 
 

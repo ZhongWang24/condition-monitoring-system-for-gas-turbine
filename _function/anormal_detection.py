@@ -19,9 +19,9 @@ from _function.steady_state_detection import steady_detection
 def anomaly_detection(variable,power,lower_limit,upper_limit): 
     #v是变量名称字符，variable是变量数组，power是功率数组,boundary是边界条件,time当前时刻索引
     #导入稳态模型
-    unsteady_model = joblib.load('F:/system_program/monitoring_condition/model/unsteady_model.pkl')
-    steady_model = joblib.load('F:/system_program/monitoring_condition/model/steady_model.pkl')
-    steady_ratio = joblib.load('F:/system_program/monitoring_condition/model/steady_ratio.pkl')
+    unsteady_model = joblib.load('model/unsteady_model.pkl')
+    steady_model = joblib.load('model/steady_model.pkl')
+    steady_ratio = joblib.load('model/steady_ratio.pkl')
      # 稳态判别.若数据是稳态，则接着进行异常检测
     delta_power = np.array(power.iloc[-1])-np.array(power.iloc[-2])   #loc是根据索引读数      
     indicator_steady = steady_detection(delta_power,steady_model,unsteady_model,steady_ratio)
